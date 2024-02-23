@@ -2,15 +2,18 @@ package controllers
 
 import (
 	"api/seguranca"
+	"api/src/autenticacao"
 	"api/src/banco"
 	"api/src/modelos"
 	"api/src/repositorios"
 	"api/src/respostas"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
 
+//Login é responsável por autenticar um usuário na API
 func Login(rw http.ResponseWriter, r *http.Request) {
 	corpoRequest, erro := ioutil.ReadAll(r.Body)
 	if erro != nil {
@@ -43,5 +46,9 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, _ := autenticacao.CriarToken(usuarioSalvoNoBanco.ID)
+	fmt.Println(token)
+
+	rw.Write([]byte(token))
 	rw.Write([]byte("Você está logado"))
 }
