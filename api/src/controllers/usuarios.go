@@ -166,6 +166,17 @@ func DeletarUsuario(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	usuarioIdNoToken, erro := autenticacao.ExtrairUsuarioID(r)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusUnauthorized, erro)
+		return
+	}
+
+	if usuarioID != usuarioIdNoToken {
+		respostas.Erro(rw, http.StatusForbidden, errors.New("não é possivel deletar um usuário que não é o seu"))
+		return
+	}
+
 	db, erro := banco.Conectar()
 	if erro != nil {
 		respostas.Erro(rw, http.StatusInternalServerError, erro)
@@ -181,5 +192,137 @@ func DeletarUsuario(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	respostas.JSON(rw, http.StatusNoContent, nil)
+
+}
+
+//SeguirUsuario permie que um usuario siga o outro
+func SeguirUsuario(rw http.ResponseWriter, r *http.Request) {
+	seguidorID, erro := autenticacao.ExtrairUsuarioID((r))
+	if erro != nil {
+		respostas.Erro(rw, http.StatusUnauthorized, erro)
+		return
+	}
+
+	parametros := mux.Vars(r)
+	usuarioID, erro := strconv.ParseUint(parametros["usuarioId"], 10, 64)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusBadRequest, erro)
+		return
+	}
+
+	if usuarioID == seguidorID {
+		respostas.Erro(rw, http.StatusForbidden, errors.New("não é possivel seguir a si mesmo"))
+		return
+	}
+
+	db, erro := banco.Conectar()
+	if erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	defer db.Close()
+
+	repositorio := repositorios.NovoRepositorioDeUsuarios(db)
+	if erro = repositorio.Seguir(usuarioID, seguidorID); erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	respostas.JSON(rw, http.StatusNoContent, nil)
+
+}
+
+//PararDeSeguirUsuario permite que um usuario pare de seguir outro
+func PararDeSeguirUsuario(rw http.ResponseWriter, r *http.Request) {
+	seguidorID, erro := autenticacao.ExtrairUsuarioID((r))
+	if erro != nil {
+		respostas.Erro(rw, http.StatusUnauthorized, erro)
+		return
+	}
+
+	parametros := mux.Vars(r)
+	usuarioID, erro := strconv.ParseUint(parametros["usuarioId"], 10, 64)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusBadRequest, erro)
+		return
+	}
+
+	if usuarioID == seguidorID {
+		respostas.Erro(rw, http.StatusForbidden, errors.New("não é possivel parar de seguir a si mesmo"))
+		return
+	}
+
+	db, erro := banco.Conectar()
+	if erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	defer db.Close()
+
+	repositorio := repositorios.NovoRepositorioDeUsuarios(db)
+	if erro = repositorio.PararDeSeguir(usuarioID, seguidorID); erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	respostas.JSON(rw, http.StatusNoContent, nil)
+}
+
+// BuscarSeguidores tras todos os seguidores de um usuario
+func BuscarSeguidores(rw http.ResponseWriter, r *http.Request) {
+
+	parametros := mux.Vars(r)
+	usuarioID, erro := strconv.ParseUint(parametros["usuarioId"], 10, 64)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusBadRequest, erro)
+		return
+	}
+
+	db, erro := banco.Conectar()
+	if erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	defer db.Close()
+
+	repositorio := repositorios.NovoRepositorioDeUsuarios(db)
+	seguidores, erro := repositorio.BuscarSeguidores(usuarioID)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	respostas.JSON(rw, http.StatusOK, seguidores)
+}
+
+// BuscarSeguindo tras todos os usuarios que alguem segue
+func BuscarSeguindo(rw http.ResponseWriter, r *http.Request) {
+
+	parametros := mux.Vars(r)
+	usuarioID, erro := strconv.ParseUint(parametros["usuarioId"], 10, 64)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusBadRequest, erro)
+		return
+	}
+
+	db, erro := banco.Conectar()
+	if erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	defer db.Close()
+
+	repositorio := repositorios.NovoRepositorioDeUsuarios(db)
+	seguidores, erro := repositorio.BuscarSeguindo(usuarioID)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	respostas.JSON(rw, http.StatusOK, seguidores)
 
 }
