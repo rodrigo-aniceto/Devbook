@@ -7,6 +7,7 @@ import (
 	"api/src/repositorios"
 	"api/src/respostas"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -61,7 +62,7 @@ func CriarPublicacao(rw http.ResponseWriter, r *http.Request) {
 //BuscarPublicacao traz uma única publicação
 func BuscarPublicacao(rw http.ResponseWriter, r *http.Request) {
 	parametros := mux.Vars(r)
-	publiacaoID, erro := strconv.ParseUint(parametros["publicacaoId"], 10, 64)
+	publicacaoID, erro := strconv.ParseUint(parametros["publicacaoId"], 10, 64)
 	if erro != nil {
 		respostas.Erro(rw, http.StatusBadRequest, erro)
 		return
@@ -75,7 +76,7 @@ func BuscarPublicacao(rw http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	repositorio := repositorios.NovoRepositorioDePublicacoes(db)
-	publicacao, erro := repositorio.BuscarPorID(publiacaoID)
+	publicacao, erro := repositorio.BuscarPorID(publicacaoID)
 	if erro != nil {
 		respostas.Erro(rw, http.StatusInternalServerError, erro)
 		return
@@ -112,6 +113,61 @@ func BuscarPublicacoes(rw http.ResponseWriter, r *http.Request) {
 
 //AtualizarPublicacao atualiza
 func AtualizarPublicacao(rw http.ResponseWriter, r *http.Request) {
+	usuarioID, erro := autenticacao.ExtrairUsuarioID(r)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusUnauthorized, erro)
+		return
+	}
+
+	parametros := mux.Vars(r)
+	publicacaoID, erro := strconv.ParseUint(parametros["publicacaoId"], 10, 64)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusBadRequest, erro)
+		return
+	}
+
+	db, erro := banco.Conectar()
+	if erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+	defer db.Close()
+
+	repositorio := repositorios.NovoRepositorioDePublicacoes(db)
+	publicacaoSalvaNoBanco, erro := repositorio.BuscarPorID(publicacaoID)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	if publicacaoSalvaNoBanco.AutorID != usuarioID {
+		respostas.Erro(rw, http.StatusInternalServerError, errors.New("não é possivel atualizar uma publicação que não seja sua"))
+		return
+	}
+
+	corpoRequisicao, erro := ioutil.ReadAll(r.Body)
+	if erro != nil {
+		respostas.Erro(rw, http.StatusUnprocessableEntity, erro)
+		return
+	}
+
+	var publicacao modelos.Publicacao
+	if erro = json.Unmarshal(corpoRequisicao, &publicacao); erro != nil {
+		respostas.Erro(rw, http.StatusBadRequest, erro)
+		return
+	}
+
+	if erro = publicacao.Preparar(); erro != nil {
+		respostas.Erro(rw, http.StatusBadRequest, erro)
+		return
+	}
+
+	if erro = repositorio.Atualizar(publicacaoID, publicacao); erro != nil {
+		respostas.Erro(rw, http.StatusInternalServerError, erro)
+		return
+	}
+
+	respostas.JSON(rw, http.StatusNoContent, nil)
 
 }
 
