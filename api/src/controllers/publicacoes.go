@@ -216,6 +216,7 @@ func DeletarPublicacao(rw http.ResponseWriter, r *http.Request) {
 // BuscarPublicacoesPorUsuario busca todas as publicacoes de um usuário especifico
 func BuscarPublicacoesPorUsuario(rw http.ResponseWriter, r *http.Request) {
 	parametros := mux.Vars(r)
+
 	usuarioID, erro := strconv.ParseUint(parametros["usuarioId"], 10, 64)
 	if erro != nil {
 		respostas.Erro(rw, http.StatusBadRequest, erro)
@@ -236,5 +237,5 @@ func BuscarPublicacoesPorUsuario(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respostas.JSON(rw, http.StatusNoContent, publicacoes)
+	respostas.JSON(rw, http.StatusOK, publicacoes)
 }
