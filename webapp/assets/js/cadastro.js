@@ -22,5 +22,12 @@ function criarUsuario (evento){
             nick: $('#nick').val(),
             senha: $('#senha').val()
         }
+    }).done(function(){ // Ele sabe se funcionou com base no valor do status code
+        alert("Usuário cadastrado com sucesso");
+    }).fail(function(erro){
+        console.log(erro)
+        alert("Erro ao cadastrar o usuário");
     })
+
+
 }
